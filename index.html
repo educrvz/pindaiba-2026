@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1a2e">
+<title>Pindaíba 2026</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="map"></div>
+
+<div id="loading-overlay">
+  <div class="loading-content">
+    <h1>Pindaíba 2026</h1>
+    <p>Preparando mapa offline...</p>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <p id="progress-text">Carregando...</p>
+  </div>
+</div>
+
+<div id="top-bar">
+  <div id="km-display">-- km</div>
+  <div id="remaining-display">Restam -- km</div>
+</div>
+
+<div id="gps-btn" class="map-btn" onclick="toggleGPS()">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>
+  </svg>
+</div>
+
+<div id="center-btn" class="map-btn" onclick="toggleCenter()" style="display:none">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/>
+  </svg>
+</div>
+
+<div id="info-panel" style="display:none">
+  <div id="info-content"></div>
+  <button onclick="closeInfo()">Fechar</button>
+</div>
+
+<div id="coords-display" style="display:none"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="route-data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
