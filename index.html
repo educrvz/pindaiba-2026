@@ -17,11 +17,15 @@
 
 <div id="loading-overlay">
   <div class="loading-content">
+    <img src="icon-192.png?v=2" alt="Pindaíba 2026" class="loading-logo">
     <h1>Pindaíba 2026</h1>
     <p>Baixando imagens de satélite...</p>
     <p style="font-size:13px; color:#666; margin-top:4px;">Mantenha a tela aberta até completar</p>
     <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
     <p id="progress-text">Conectando...</p>
+    <button id="resume-btn" class="resume-btn" onclick="resumeDownload()" style="display:none">
+      Parou? Baixe tudo
+    </button>
   </div>
 </div>
 
@@ -40,6 +44,10 @@
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
     <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/>
   </svg>
+</div>
+
+<div id="km-toggle-btn" class="map-btn" onclick="toggleKmDetail()">
+  <span style="font-size:12px; font-weight:700; line-height:1">KM</span>
 </div>
 
 <div id="info-panel" style="display:none">

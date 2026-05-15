@@ -1,11 +1,15 @@
 let map, userMarker, watchId = null, autoCenter = true;
 let routeLine, altRouteLine;
 const TOTAL_KM = 251.62;
+let showAllKm = false;
+let kmLabelLayers = [];
+let kmDotLayers = [];
+let lastProgress = { loaded: 0, total: 0, timestamp: 0 };
+let stallTimer = null;
 
 function initMap() {
-  const routeBounds = L.latLngBounds(
-    ROUTE_DATA.route.map(p => [p[1], p[0]])
-  );
+  const routeCoords = ROUTE_DATA.route.map(p => [p[1], p[0]]);
+  const routeBounds = L.latLngBounds(routeCoords);
 
   map = L.map('map', {
     zoomControl: true,
@@ -22,13 +26,12 @@ function initMap() {
     tileSize: 256,
     bounds: routeBounds.pad(0.15),
     errorTileUrl: '',
-    keepBuffer: 4,
+    keepBuffer: 6,
     updateWhenZooming: false,
     updateWhenIdle: true
   }).addTo(map);
 
-  routeLine = L.polyline(
-    ROUTE_DATA.route.map(p => [p[1], p[0]]),
+  routeLine = L.polyline(routeCoords,
     { color: '#ff4444', weight: 3, opacity: 0.9 }
   ).addTo(map);
 
@@ -42,45 +45,61 @@ function initMap() {
   addKmMarkers();
   addPOIs();
 
-  map.fitBounds(routeBounds, { padding: [20, 20] });
+  const mid = Math.floor(routeCoords.length / 2);
+  map.setView(routeCoords[mid], 13);
 }
 
 function addKmMarkers() {
-  const majorInterval = 10;
-  const minorInterval = 5;
+  kmLabelLayers.forEach(l => map.removeLayer(l));
+  kmDotLayers.forEach(l => map.removeLayer(l));
+  kmLabelLayers = [];
+  kmDotLayers = [];
 
   ROUTE_DATA.kmMarkers.forEach(m => {
     const isStart = m.km === 0;
     const isEnd = m.km >= 251;
-    const isMajor = m.km % majorInterval === 0;
-    const isMinor = m.km % minorInterval === 0;
+    const isMajor = m.km % 10 === 0;
+    const isMinor = m.km % 5 === 0;
 
-    if (isStart || isEnd || isMajor) {
+    const showLabel = showAllKm
+      ? true
+      : (isStart || isEnd || isMajor);
+
+    if (showLabel) {
       const label = isStart ? 'INÍCIO' : isEnd ? 'FIM' : `${m.km} km`;
-      L.marker([m.lat, m.lon], {
+      const fontSize = showAllKm ? (isMajor ? 13 : 10) : (isMajor ? 13 : 11);
+      const layer = L.marker([m.lat, m.lon], {
         icon: L.divIcon({
           className: 'km-marker-label',
-          html: `<span style="font-size:${isMajor ? 13 : 11}px">${label}</span>`,
+          html: `<span style="font-size:${fontSize}px">${label}</span>`,
           iconSize: [60, 16],
           iconAnchor: [30, 8]
         })
       }).addTo(map);
+      kmLabelLayers.push(layer);
     }
 
-    const radius = isMajor ? 4 : isMinor ? 2.5 : 1.5;
-    const opacity = isMajor ? 0.9 : isMinor ? 0.6 : 0.3;
+    const radius = showAllKm
+      ? (isMajor ? 4 : 2.5)
+      : (isMajor ? 4 : isMinor ? 2.5 : 1.5);
+    const opacity = showAllKm
+      ? (isMajor ? 0.9 : 0.7)
+      : (isMajor ? 0.9 : isMinor ? 0.6 : 0.3);
 
-    L.circleMarker([m.lat, m.lon], {
-      radius: radius,
-      fillColor: '#fff',
-      fillOpacity: opacity,
-      color: '#fff',
-      weight: 0.5,
-      opacity: opacity
+    const dot = L.circleMarker([m.lat, m.lon], {
+      radius, fillColor: '#fff', fillOpacity: opacity,
+      color: '#fff', weight: 0.5, opacity
     }).addTo(map).on('click', () => {
       showInfo(`<h3>Km ${m.km}</h3><p>Restam ${(TOTAL_KM - m.km).toFixed(1)} km</p>`);
     });
+    kmDotLayers.push(dot);
   });
+}
+
+function toggleKmDetail() {
+  showAllKm = !showAllKm;
+  document.getElementById('km-toggle-btn').classList.toggle('active', showAllKm);
+  addKmMarkers();
 }
 
 function addPOIs() {
@@ -213,15 +232,36 @@ function closeInfo() {
 function updateProgress(loaded, total, cached) {
   const pct = Math.round((loaded / total) * 100);
   document.getElementById('progress-fill').style.width = pct + '%';
-  const newTiles = loaded - (cached || 0);
   if (cached > 0 && cached === loaded) {
     document.getElementById('progress-text').textContent = `${pct}% — Já baixado!`;
   } else {
     document.getElementById('progress-text').textContent = `${pct}% — ${loaded.toLocaleString()} de ${total.toLocaleString()} imagens`;
   }
+
+  lastProgress = { loaded, total, timestamp: Date.now() };
+  resetStallDetection();
+}
+
+function resetStallDetection() {
+  if (stallTimer) clearTimeout(stallTimer);
+  document.getElementById('resume-btn').style.display = 'none';
+
+  stallTimer = setTimeout(() => {
+    const pct = Math.round((lastProgress.loaded / lastProgress.total) * 100);
+    if (pct < 100) {
+      document.getElementById('resume-btn').style.display = 'inline-block';
+    }
+  }, 8000);
+}
+
+function resumeDownload() {
+  document.getElementById('resume-btn').style.display = 'none';
+  document.getElementById('progress-text').textContent = 'Retomando download...';
+  startTilePreCache();
 }
 
 function hideLoading() {
+  if (stallTimer) clearTimeout(stallTimer);
   const overlay = document.getElementById('loading-overlay');
   overlay.style.transition = 'opacity 0.5s';
   overlay.style.opacity = '0';
@@ -236,23 +276,26 @@ function startTilePreCache() {
 
   const tiles = getTileList();
   document.getElementById('progress-text').textContent = `0% — 0 de ${tiles.toLocaleString()} imagens`;
-
-  navigator.serviceWorker.addEventListener('message', event => {
-    if (event.data.type === 'cache-progress') {
-      updateProgress(event.data.loaded, event.data.total, event.data.cached);
-    }
-    if (event.data.type === 'cache-complete') {
-      document.getElementById('progress-text').textContent = 'Mapa pronto! Funciona offline ✓';
-      document.getElementById('progress-fill').style.width = '100%';
-      setTimeout(hideLoading, 1500);
-    }
-  });
+  resetStallDetection();
 
   navigator.serviceWorker.controller.postMessage({
     type: 'precache-tiles',
     tiles: tiles
   });
 }
+
+navigator.serviceWorker.addEventListener('message', event => {
+  if (event.data.type === 'cache-progress') {
+    updateProgress(event.data.loaded, event.data.total, event.data.cached);
+  }
+  if (event.data.type === 'cache-complete') {
+    if (stallTimer) clearTimeout(stallTimer);
+    document.getElementById('resume-btn').style.display = 'none';
+    document.getElementById('progress-text').textContent = 'Mapa pronto! Funciona offline ✓';
+    document.getElementById('progress-fill').style.width = '100%';
+    setTimeout(hideLoading, 1500);
+  }
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(reg => {

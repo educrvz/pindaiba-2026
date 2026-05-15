@@ -3,7 +3,6 @@ html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-
 
 #map { width: 100%; height: 100%; z-index: 1; background: #1a1a2e; }
 .leaflet-container { background: #1a1a2e !important; }
-.leaflet-missing-tile, .leaflet-tile-empty { opacity: 0 !important; }
 
 #loading-overlay {
   position: fixed; inset: 0; z-index: 9999;
@@ -12,6 +11,10 @@ html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-
   flex-direction: column;
 }
 .loading-content { text-align: center; padding: 20px; }
+.loading-logo {
+  width: 120px; height: 120px; border-radius: 24px;
+  margin-bottom: 16px;
+}
 .loading-content h1 { font-size: 28px; margin-bottom: 8px; }
 .loading-content p { font-size: 16px; color: #aaa; margin: 8px 0; }
 .progress-bar {
@@ -19,10 +22,19 @@ html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-
   margin: 16px auto; overflow: hidden;
 }
 .progress-fill {
-  height: 100%; width: 0%; background: #4af; border-radius: 4px;
+  height: 100%; width: 0%; background: #4af; border-radius: 6px;
   transition: width 0.3s;
 }
 #progress-text { font-size: 14px; color: #888; }
+
+.resume-btn {
+  margin-top: 20px; padding: 14px 32px;
+  background: transparent; color: #4af;
+  border: 2px solid #4af; border-radius: 12px;
+  font-size: 18px; font-weight: 600; cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.resume-btn:active { background: #4af; color: #000; }
 
 #top-bar {
   position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
@@ -49,6 +61,8 @@ html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-
 
 #gps-btn { bottom: 100px; right: 16px; }
 #center-btn { bottom: 160px; right: 16px; }
+#km-toggle-btn { bottom: 220px; right: 16px; font-size: 11px; }
+#km-toggle-btn.active { background: rgba(40, 120, 255, 0.9); }
 
 #info-panel {
   position: fixed; bottom: 0; left: 0; right: 0; z-index: 1001;

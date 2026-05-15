@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pindaiba-v2';
+const CACHE_NAME = 'pindaiba-v3';
 
 const APP_SHELL = [
   './',
