@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pindaiba-v1';
+const CACHE_NAME = 'pindaiba-v2';
 
 const APP_SHELL = [
   './',
@@ -6,6 +6,7 @@ const APP_SHELL = [
   './app.js',
   './style.css',
   './route-data.js',
+  './tile-manifest.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
@@ -62,15 +63,18 @@ async function precacheTiles(tileUrls) {
   const cache = await caches.open(CACHE_NAME);
   const clients = await self.clients.matchAll();
   let loaded = 0;
+  let cached = 0;
   const total = tileUrls.length;
-  const batchSize = 20;
+  const BATCH = 30;
 
-  for (let i = 0; i < total; i += batchSize) {
-    const batch = tileUrls.slice(i, i + batchSize);
+  for (let i = 0; i < total; i += BATCH) {
+    const batch = tileUrls.slice(i, i + BATCH);
     await Promise.allSettled(
       batch.map(async url => {
         const existing = await cache.match(url);
-        if (!existing) {
+        if (existing) {
+          cached++;
+        } else {
           try {
             const resp = await fetch(url);
             if (resp.ok) await cache.put(url, resp);
@@ -79,7 +83,7 @@ async function precacheTiles(tileUrls) {
         loaded++;
       })
     );
-    clients.forEach(c => c.postMessage({ type: 'cache-progress', loaded, total }));
+    clients.forEach(c => c.postMessage({ type: 'cache-progress', loaded, cached, total }));
   }
-  clients.forEach(c => c.postMessage({ type: 'cache-complete' }));
+  clients.forEach(c => c.postMessage({ type: 'cache-complete', loaded, cached, total }));
 }

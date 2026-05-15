@@ -11,14 +11,20 @@ function initMap() {
     zoomControl: true,
     attributionControl: false,
     maxZoom: 17,
-    minZoom: 10
+    minZoom: 10,
+    maxBounds: routeBounds.pad(0.3),
+    maxBoundsViscosity: 0.8
   });
 
   L.tileLayer('tiles/{z}/{x}/{y}.jpg', {
     maxZoom: 17,
     minZoom: 10,
     tileSize: 256,
-    errorTileUrl: ''
+    bounds: routeBounds.pad(0.15),
+    errorTileUrl: '',
+    keepBuffer: 4,
+    updateWhenZooming: false,
+    updateWhenIdle: true
   }).addTo(map);
 
   routeLine = L.polyline(
@@ -172,8 +178,6 @@ function onPosition(pos) {
 
   const nearest = findNearestKm(lat, lon);
   if (nearest) {
-    const distToRoute = haversine(lat, lon, nearest.lat, nearest.lon);
-    const kmEstimate = nearest.km + (distToRoute < 1 ? 0 : 0);
     document.getElementById('km-display').textContent = `${nearest.km.toFixed(1)} km`;
     document.getElementById('remaining-display').textContent = `Restam ${(TOTAL_KM - nearest.km).toFixed(1)} km`;
   }
@@ -206,6 +210,17 @@ function closeInfo() {
   document.getElementById('info-panel').style.display = 'none';
 }
 
+function updateProgress(loaded, total, cached) {
+  const pct = Math.round((loaded / total) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  const newTiles = loaded - (cached || 0);
+  if (cached > 0 && cached === loaded) {
+    document.getElementById('progress-text').textContent = `${pct}% — Já baixado!`;
+  } else {
+    document.getElementById('progress-text').textContent = `${pct}% — ${loaded.toLocaleString()} de ${total.toLocaleString()} imagens`;
+  }
+}
+
 function hideLoading() {
   const overlay = document.getElementById('loading-overlay');
   overlay.style.transition = 'opacity 0.5s';
@@ -213,13 +228,43 @@ function hideLoading() {
   setTimeout(() => overlay.style.display = 'none', 500);
 }
 
+function startTilePreCache() {
+  if (!navigator.serviceWorker.controller) {
+    setTimeout(startTilePreCache, 200);
+    return;
+  }
+
+  const tiles = getTileList();
+  document.getElementById('progress-text').textContent = `0% — 0 de ${tiles.toLocaleString()} imagens`;
+
+  navigator.serviceWorker.addEventListener('message', event => {
+    if (event.data.type === 'cache-progress') {
+      updateProgress(event.data.loaded, event.data.total, event.data.cached);
+    }
+    if (event.data.type === 'cache-complete') {
+      document.getElementById('progress-text').textContent = 'Mapa pronto! Funciona offline ✓';
+      document.getElementById('progress-fill').style.width = '100%';
+      setTimeout(hideLoading, 1500);
+    }
+  });
+
+  navigator.serviceWorker.controller.postMessage({
+    type: 'precache-tiles',
+    tiles: tiles
+  });
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').then(reg => {
-    document.getElementById('progress-text').textContent = 'Mapa pronto!';
-    document.getElementById('progress-fill').style.width = '100%';
-    setTimeout(hideLoading, 800);
+    if (navigator.serviceWorker.controller) {
+      startTilePreCache();
+    } else {
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        startTilePreCache();
+      });
+    }
   }).catch(() => {
-    setTimeout(hideLoading, 500);
+    hideLoading();
   });
 } else {
   hideLoading();

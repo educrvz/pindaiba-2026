@@ -1,7 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-ui, sans-serif; }
 
-#map { width: 100%; height: 100%; z-index: 1; }
+#map { width: 100%; height: 100%; z-index: 1; background: #1a1a2e; }
+.leaflet-container { background: #1a1a2e !important; }
+.leaflet-missing-tile, .leaflet-tile-empty { opacity: 0 !important; }
 
 #loading-overlay {
   position: fixed; inset: 0; z-index: 9999;
@@ -13,7 +15,7 @@ html, body { height: 100%; overflow: hidden; font-family: -apple-system, system-
 .loading-content h1 { font-size: 28px; margin-bottom: 8px; }
 .loading-content p { font-size: 16px; color: #aaa; margin: 8px 0; }
 .progress-bar {
-  width: 280px; height: 8px; background: #333; border-radius: 4px;
+  width: 300px; height: 12px; background: #333; border-radius: 6px;
   margin: 16px auto; overflow: hidden;
 }
 .progress-fill {
