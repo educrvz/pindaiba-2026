@@ -7,6 +7,32 @@ let kmDotLayers = [];
 let lastProgress = { loaded: 0, total: 0, timestamp: 0 };
 let stallTimer = null;
 
+const TRANSPARENT_TILE = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
+const OfflineTileLayer = L.TileLayer.extend({
+  createTile: function(coords, done) {
+    const tile = document.createElement('img');
+    const z = String(coords.z);
+    const x = String(coords.x);
+    const y = coords.y;
+
+    if (typeof TILE_INDEX !== 'undefined') {
+      const zData = TILE_INDEX[z];
+      if (!zData || !zData[x] || zData[x].indexOf(y) === -1) {
+        tile.src = TRANSPARENT_TILE;
+        setTimeout(() => done(null, tile), 0);
+        return tile;
+      }
+    }
+
+    L.DomEvent.on(tile, 'load', () => done(null, tile));
+    L.DomEvent.on(tile, 'error', () => { tile.src = TRANSPARENT_TILE; done(null, tile); });
+    tile.crossOrigin = '';
+    tile.src = this.getTileUrl(coords);
+    return tile;
+  }
+});
+
 function initMap() {
   const routeCoords = ROUTE_DATA.route.map(p => [p[1], p[0]]);
   const routeBounds = L.latLngBounds(routeCoords);
@@ -20,12 +46,11 @@ function initMap() {
     maxBoundsViscosity: 0.8
   });
 
-  L.tileLayer('tiles/{z}/{x}/{y}.jpg', {
+  new OfflineTileLayer('tiles/{z}/{x}/{y}.jpg', {
     maxZoom: 17,
     minZoom: 10,
     tileSize: 256,
     bounds: routeBounds.pad(0.15),
-    errorTileUrl: '',
     keepBuffer: 6,
     updateWhenZooming: false,
     updateWhenIdle: true
@@ -102,24 +127,87 @@ function toggleKmDetail() {
   addKmMarkers();
 }
 
+const poiLayers = {};
+const poiVisible = { beach: false, exit: false, bridge: false, island: false, town: false, house: false, lagoon: false, airstrip: false };
+
 function addPOIs() {
+  const emojis = { beach: '🏖️', bridge: '🌉', exit: '🚗', island: '🏝️', town: '🏘️', house: '🏠', lagoon: '💧', airstrip: '🛩️' };
+
   ROUTE_DATA.pois.forEach(poi => {
-    L.circleMarker([poi.lat, poi.lon], {
-      radius: 7, fillColor: '#ffc832', fillOpacity: 0.9,
-      color: '#fff', weight: 2
-    }).addTo(map).on('click', () => {
-      showInfo(`<h3>${poi.name}</h3><p>${poi.lat.toFixed(5)}, ${poi.lon.toFixed(5)}</p>`);
+    const type = poi.type || 'beach';
+    if (type === 'hospital') return;
+    const emoji = emojis[type] || '📍';
+    const sz = [26, 26];
+
+    const marker = L.marker([poi.lat, poi.lon], {
+      icon: L.divIcon({
+        className: 'poi-emoji',
+        html: emoji,
+        iconSize: sz,
+        iconAnchor: [sz[0]/2, sz[1]/2]
+      })
+    }).on('click', () => {
+      let html = `<h3>${emoji} ${poi.name}</h3>`;
+      if (poi.info) html += `<p style="font-size:24px; margin:8px 0">${poi.info}</p>`;
+      if (poi.phone) html += `<p>📞 <a href="tel:${poi.phone.replace(/[^+\d]/g,'')}" style="color:#4af">${poi.phone}</a></p>`;
+      if (!poi.phone) html += `<p>${poi.lat.toFixed(5)}, ${poi.lon.toFixed(5)}</p>`;
+      showInfo(html);
     });
 
-    L.marker([poi.lat, poi.lon], {
-      icon: L.divIcon({
-        className: 'poi-label',
-        html: poi.name,
-        iconSize: [100, 20],
-        iconAnchor: [50, -8]
-      })
-    }).addTo(map);
+    if (poiVisible[type] !== false) marker.addTo(map);
+    if (!poiLayers[type]) poiLayers[type] = [];
+    poiLayers[type].push(marker);
   });
+}
+
+function togglePOILayer(type) {
+  poiVisible[type] = !poiVisible[type];
+  const btn = document.getElementById('toggle-' + type);
+  if (btn) btn.classList.toggle('active', poiVisible[type]);
+  (poiLayers[type] || []).forEach(m => {
+    if (poiVisible[type]) m.addTo(map);
+    else map.removeLayer(m);
+  });
+}
+
+function togglePOIDrawer() {
+  document.getElementById('poi-drawer').classList.toggle('open');
+  document.getElementById('poi-toggle-btn').classList.toggle('active');
+}
+
+function showHospitals() {
+  const hospitals = ROUTE_DATA.pois.filter(p => p.type === 'hospital');
+  let userLat = null, userLon = null;
+  if (userMarker) {
+    const ll = userMarker.getLatLng();
+    userLat = ll.lat;
+    userLon = ll.lng;
+  }
+
+  let html = '<h3>🐍 Hospitais com Antiveneno</h3>';
+  hospitals.sort((a, b) => {
+    if (!userLat) return 0;
+    return haversine(userLat, userLon, a.lat, a.lon) - haversine(userLat, userLon, b.lat, b.lon);
+  });
+
+  hospitals.forEach(h => {
+    let dist = '';
+    if (userLat) {
+      const km = haversine(userLat, userLon, h.lat, h.lon);
+      dist = `<span style="color:#4af; font-weight:700">${km.toFixed(0)} km</span> — `;
+    }
+    html += `<div style="margin:12px 0; padding:10px; background:rgba(255,255,255,0.08); border-radius:8px">`;
+    html += `<p style="font-weight:700; font-size:15px">${h.name}</p>`;
+    html += `<p style="font-size:22px; margin:4px 0">${h.info}</p>`;
+    html += `<p>${dist}📞 <a href="tel:${h.phone.replace(/[^+\d]/g,'')}" style="color:#4af">${h.phone}</a></p>`;
+    html += `</div>`;
+  });
+
+  if (!userLat) {
+    html += '<p style="color:#888; font-size:12px; margin-top:8px">Ative o GPS para ver distâncias</p>';
+  }
+
+  showInfo(html);
 }
 
 function findNearestKm(lat, lon) {

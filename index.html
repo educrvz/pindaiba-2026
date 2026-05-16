@@ -46,8 +46,42 @@
   </svg>
 </div>
 
-<div id="km-toggle-btn" class="map-btn" onclick="toggleKmDetail()">
-  <span style="font-size:12px; font-weight:700; line-height:1">KM</span>
+<div id="layer-column">
+  <div id="km-toggle-btn" class="map-btn layer-btn" onclick="toggleKmDetail()">
+    <span style="font-size:12px; font-weight:700; line-height:1">KM</span>
+  </div>
+  <div id="poi-toggle-btn" class="map-btn layer-btn" onclick="togglePOIDrawer()">
+    <span style="line-height:1">📍</span>
+  </div>
+  <div id="poi-drawer">
+    <div id="toggle-beach" class="map-btn layer-btn" onclick="togglePOILayer('beach')">
+      <span style="font-size:20px; line-height:1">🏖️</span>
+    </div>
+    <div id="toggle-exit" class="map-btn layer-btn" onclick="togglePOILayer('exit')">
+      <span style="font-size:20px; line-height:1">🚗</span>
+    </div>
+    <div id="toggle-bridge" class="map-btn layer-btn" onclick="togglePOILayer('bridge')">
+      <span style="font-size:20px; line-height:1">🌉</span>
+    </div>
+    <div id="toggle-island" class="map-btn layer-btn" onclick="togglePOILayer('island')">
+      <span style="font-size:20px; line-height:1">🏝️</span>
+    </div>
+    <div id="toggle-town" class="map-btn layer-btn" onclick="togglePOILayer('town')">
+      <span style="font-size:20px; line-height:1">🏘️</span>
+    </div>
+    <div id="toggle-house" class="map-btn layer-btn" onclick="togglePOILayer('house')">
+      <span style="font-size:20px; line-height:1">🏠</span>
+    </div>
+    <div id="toggle-lagoon" class="map-btn layer-btn" onclick="togglePOILayer('lagoon')">
+      <span style="font-size:20px; line-height:1">💧</span>
+    </div>
+    <div id="toggle-airstrip" class="map-btn layer-btn" onclick="togglePOILayer('airstrip')">
+      <span style="font-size:20px; line-height:1">🛩️</span>
+    </div>
+    <div id="hospital-btn" class="map-btn layer-btn" onclick="showHospitals()">
+      <span style="font-size:20px; line-height:1">🐍</span>
+    </div>
+  </div>
 </div>
 
 <div id="info-panel" style="display:none">

@@ -25,7 +25,7 @@ def deg2tile(lat, lon, zoom):
 def load_route():
     with open(ROUTE_DATA) as f:
         text = f.read()
-    json_str = text[len('const ROUTE_DATA = '):-1]
+    json_str = text[len('const ROUTE_DATA = '):].rstrip().rstrip(';')
     data = json.loads(json_str)
     points = [(p[1], p[0]) for p in data['route']]
     if data.get('altRoute'):
@@ -33,14 +33,20 @@ def load_route():
     return points
 
 def get_needed_tiles(points):
-    buffer_deg = BUFFER_KM / 111.0
+    buffer_deg_lat = BUFFER_KM / 111.0
     all_tiles = {}
     for z in range(ZOOM_MIN, ZOOM_MAX + 1):
         tiles = set()
         for lat, lon in points:
-            for dlat in [-buffer_deg, 0, buffer_deg]:
-                for dlon in [-buffer_deg, 0, buffer_deg]:
-                    tx, ty = deg2tile(lat + dlat, lon + dlon, z)
+            buffer_deg_lon = BUFFER_KM / (111.0 * math.cos(math.radians(lat)))
+            min_lat = lat - buffer_deg_lat
+            max_lat = lat + buffer_deg_lat
+            min_lon = lon - buffer_deg_lon
+            max_lon = lon + buffer_deg_lon
+            tx_min, ty_max = deg2tile(min_lat, min_lon, z)
+            tx_max, ty_min = deg2tile(max_lat, max_lon, z)
+            for tx in range(tx_min, tx_max + 1):
+                for ty in range(ty_min, ty_max + 1):
                     tiles.add((z, tx, ty))
         all_tiles[z] = tiles
     return all_tiles
