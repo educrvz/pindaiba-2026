@@ -1,0 +1,46 @@
+services:
+  openwa:
+    image: ${OPENWA_IMAGE:-ghcr.io/rmyndharis/openwa:latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2785:2785"
+    environment:
+      NODE_ENV: development
+      PORT: 2785
+      API_KEY: ${OPENWA_API_KEY}
+      DATABASE_TYPE: sqlite
+      DATABASE_NAME: /app/data/openwa.sqlite
+      ENGINE_TYPE: whatsapp-web.js
+      SESSION_DATA_PATH: /app/data/sessions
+      PUPPETEER_HEADLESS: "true"
+      STORAGE_TYPE: local
+      WEBHOOK_TIMEOUT: "10000"
+      WEBHOOK_MAX_RETRIES: "3"
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:2785/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  dashboard:
+    image: ${OPENWA_DASHBOARD_IMAGE:-ghcr.io/rmyndharis/openwa-dashboard:latest}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:2886:2886"
+    depends_on:
+      openwa:
+        condition: service_healthy
+
+  webhook-handler:
+    build: ./webhook-handler
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      SIGNATURE_HEADER: ${SIGNATURE_HEADER:-x-openwa-signature}
+      NOTION_TOKEN: ${NOTION_TOKEN:-}
+      NOTION_LEADS_DATABASE_ID: ${NOTION_LEADS_DATABASE_ID:-}
+    ports:
+      - "127.0.0.1:3000:3000"
